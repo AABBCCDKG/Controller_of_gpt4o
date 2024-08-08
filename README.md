@@ -1,6 +1,15 @@
 # Controller_of_gpt4o
 
-## Project Overview
+## How to use it
+
+To use this project, you need to set up your OpenAI API key. Follow these steps:
+
+1. Obtain an API key from OpenAI if you don't already have one.
+2. In the `main.py` file, locate the following line:
+
+   ```python
+   #api_key = "<insert your api_key>"
+
 
 This project leverages the advanced capabilities of ChatGPT-4 to recognize objects in images and generate physical simulations. By combining image recognition, programming skills, and physics modeling, we aim to create a powerful tool for video prediction and object behavior simulation.
 
