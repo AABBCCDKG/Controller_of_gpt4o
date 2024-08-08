@@ -28,8 +28,14 @@ Our approach focuses on improving the accuracy and consistency of ChatGPT-4o's o
 1. **Predefined Physics Engine Code**: We establish a standardized format for physics simulation code.
 2. **Multiple Independent Calls**: Each epoch involves three separate calls to ChatGPT-4o.
 3. **Fact-based Prompting**: We provide ChatGPT-4o with facts that have over 50% accuracy.
-4. **Similarity Analysis and Averaging**: Results from each epoch are processed using similarity metrics and averaging techniques.
-5. **Iterative Refinement**: We insert the processed results into the next epoch's prompt as a hint, stating "Hint: the parameters are probably:".
+4. **Similarity Analysis and Averaging**: Results from each epoch are processed using similarity metrics and averaging techniques. For example:
+
+   ```python
+   add_curved_floor(space, [(50, 500), (150, 400), (250, 350), (350, 450), (450, 500)], 5, 0.5)
+   add_ball(space, (100, 50), 25, 1, (200, 200))
+   add_polygon(space, (200, 300), [(0, 0), (50, 0), (50, 50), (0, 50)], 10, (0, 0))
+   add_ball(space, (100, 50), 25, 1, (200, 200))
+6. **Iterative Refinement**: We insert the processed results into the next epoch's prompt as a hint, stating "Hint: the parameters are probably:".
 
 ## Potential and Challenges
 
