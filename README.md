@@ -1,4 +1,4 @@
-# Controller_of_gpt4o
+# EchoGen: Iterative Optimization System for LLM
 
 ## How to use it
 
