@@ -102,11 +102,9 @@ def find_similar_and_average(arr, eps = 0.5, min_samples = 2):
     if np.all(clusters == -1):
         return np.mean(filtered_arr)
     
-    # 
     unique_clusters, cluster_sizes = np.unique(clusters[clusters != -1], return_counts = True)
     largest_cluster = unique_clusters[np.argmax(cluster_sizes)]
     
-    # 返回最大聚类的平均值
     cluster_points = filtered_arr[clusters == largest_cluster]
     return np.mean(cluster_points)
     
@@ -115,31 +113,23 @@ def extract_parameters(function_str_list):
     function_counts = {}
     
     for function_str in function_str_list:
-        # 提取完整的函数名（
         function_name_match = re.match(r"(add_\w+)", function_str)
         if function_name_match:
             function_name = function_name_match.group(1)
         else:
             function_name = "unknown"
         
-        # 计算函数名出现的次数
         if function_name in function_counts:
             function_counts[function_name] += 1
         else:
             function_counts[function_name] = 1
         
-        # 如果函数名出现超过一次，添加计数后缀
         if function_counts[function_name] > 1:
             function_name_with_suffix = f"{function_name}{function_counts[function_name]}"
         else:
             function_name_with_suffix = function_name
-        
-        # 移除 "add_xxx(space, " 并保留剩余的部分
         params_str = re.sub(r"add_\w+\(space,\s*", "", function_str)
-        # 移除最后的右括号（如果存在）
         params_str = params_str.rstrip(")")
-        
-        # 将参数字符串添加到字典中
         processed_params[function_name_with_suffix] = params_str.strip()
     
     return processed_params
@@ -147,41 +137,27 @@ def extract_parameters(function_str_list):
 def extract_number(parameters):
     result = {}
     
-    # 获取所有可能的键
     all_keys = set()
     for param_dict in parameters:
         all_keys.update(param_dict.keys())
         
     for key in all_keys:
-        # 从每个字典中提取当前键的值，如果不存在则用空字符串替代
         values = [param_dict.get(key, '') for param_dict in parameters]
-        
-        # 使用正则表达式提取每个字符串的所有数字
         numbers = [re.findall(r'-?\d+(?:\.\d+)?', value) for value in values]
-        
-        # 确定最长的数字列表的长度
         max_length = max(len(num_list) for num_list in numbers)
-        
-        # 对每个位置进行迭代
+    
         key_result = []
         for i in range(max_length):
-            # 提取每个字符串中相同位置的数字（如果有的话）
             position_numbers = [float(num_list[i]) if i < len(num_list) else None for num_list in numbers]
             key_result.append(position_numbers)
         
         result[key] = key_result
-    
-    # 将结果转换为 list[dict] 格式
     return [{k: v for k, v in result.items()}]
 
 def split_function_prototype(prototype_str):
-    # 定义正则表达式模式来匹配 "float" 和括号、方括号、花括号、逗号
     pattern = r'float|\(|\)|\[|\]|\{|\}|,|\s+|[^,()\[\]\{\}\s]+'
-    
-    # 使用 re.findall 找到所有匹配的部分
     parts = re.findall(pattern, prototype_str)
-    
-    # 处理匹配结果，移除空字符串，并将逗号替换为", "
+
     processed_parts = []
     for part in parts:
         if part.strip():
@@ -223,36 +199,26 @@ def add_function_name(parameters, function_prototype):
 
 
 def get_base_function_name(func_name):
-    # 提取函数名中的字母部分作为基函数名
     match = re.match(r"([a-zA-Z_]+)", func_name)
     return match.group(1) if match else func_name
 
 def find_similar_functions(func_dict):
-    # 创建一个字典，基函数名作为键，相似函数名列表作为值
     similar_functions = defaultdict(list)
 
     for func_name in func_dict.keys():
         base_name = get_base_function_name(func_name)
         similar_functions[base_name].append(func_name)
-    
-    # 过滤掉只出现一次的基函数名，并构建返回结果
     result = [(base_name, group) for base_name, group in similar_functions.items() if len(group) > 1]
     
     return result
 
 def update_dict_keys(param, keys_to_change):
-    # 创建一个键映射字典
     key_mapping = dict(keys_to_change)
-    
-    # 创建一个新的字典来存储更新后的键值对
     updated_param = {}
     
     for old_key, value in param.items():
-        # 如果旧键在映射中，使用新键；否则保持原样
         new_key = key_mapping.get(old_key, old_key)
         updated_param[new_key] = value
-    
-    # 返回更新后的字典
     return updated_param
 
 
@@ -278,9 +244,7 @@ def find_most_similar_functions(parameters):
     return max_similar_funcs_index
 
 def extract_numbers_from_string(s):
-    # 使用正则表达式匹配所有数字，包括整数和小数
     numbers = re.findall(r'\d+', s)
-    # 将匹配到的数字字符串转换为整数
     numbers = [int(num) for num in numbers]
     return numbers
 
@@ -319,8 +283,6 @@ def adjustment_function_name(parameters):
     parameters[0], parameters[max_similar_funcs_index] = parameters[max_similar_funcs_index], parameters[0]
     base_name, similar_functions = find_similar_functions(parameters[0])[0]
     
-
-    #print(similar_functions)
     def processfunction(param):
         similarity_value = []
         for key, value in param.items():
@@ -331,8 +293,6 @@ def adjustment_function_name(parameters):
                 for function in similar_functions:
                     similarity_dict[function] = cosine_similarity(extract_numbers_from_string(value), extract_numbers_from_string(parameters[0][function]))
                 similarity_value.append(similarity_dict)
-
-        #print(similarity_value)
         keys_to_change = []
         i = 0
 
@@ -412,7 +372,7 @@ def main():
         function_prototype = {"add_ball": "add_ball(space, (float, float), float, float, (float, float))",
                               "add_curved_floor": "add_curved_floor(space, [(float, float), (float, float), (float, float), (float, float), (float, float)], float, float)",
                               "add_polygon": "add_polygon(space, (float, float), [(float, float), (float, float), (float, float), (float, float)], float, (float, float))"}
-        responses = [call_chatgpt(last_prompt) for _ in range(3)] # 一次生成50个
+        responses = [call_chatgpt(last_prompt) for _ in range(3)] 
         parameters = []
         for response in responses:
             parse_function = parse_functions(response)
@@ -470,19 +430,18 @@ def main():
     """
     exec(response_by_llm)
     
-    # 主循环
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
 
-        screen.fill((255, 255, 255))  # 填充背景颜色
-        space.step(1 / 50.0)  # 模拟一个时间步长
-        draw_space(space, screen)  # 绘制物理空间
+        screen.fill((255, 255, 255))  
+        space.step(1 / 50.0)  
+        draw_space(space, screen)  
 
         pygame.display.flip()
-        clock.tick(50)  # 控制帧率
+        clock.tick(50) 
 
 if __name__ == '__main__':
     main()
