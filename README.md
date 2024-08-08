@@ -25,7 +25,7 @@ This project leverages the advanced capabilities of ChatGPT-4 to recognize objec
 
 Our approach focuses on improving the accuracy and consistency of ChatGPT-4o's output:
 
-1. **Predefined Physics Engine Code**: We establish a standardized format for physics simulation code. Therefore, the result of ChatGPT-4o should be
+1. **Predefined Physics Engine Code**: We establish a standardized format for physics simulation code. Therefore, the result of ChatGPT-4o should be like:
    ```python
    add_ball(space, (100, 50), 25, 1, (200, 200))
 3. **Multiple Independent Calls**: Each epoch involves three separate calls to ChatGPT-4o.
