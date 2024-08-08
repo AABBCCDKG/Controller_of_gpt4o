@@ -322,7 +322,7 @@ def main():
             return base64.b64encode(image_file.read()).decode('utf-8')
 
     # Path to your image
-    image_path = "/Users/dong/Desktop/video/code/frame_00001.jpg"
+    image_path = "frame_00001.jpg"
 
     # Getting the base64 string
     base64_image = encode_image(image_path)
