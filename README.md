@@ -25,6 +25,6 @@ Our approach focuses on improving the accuracy and consistency of ChatGPT-4o's o
 
 While this approach shows immense potential in video prediction and object behavior simulation, we acknowledge certain challenges:
 
-- **Recognition Accuracy**: ChatGPT-4V's object recognition, while advanced, is not always precise.
+- **Recognition Accuracy**: ChatGPT-4o's object recognition, while advanced, is not always precise.
 - **Output Stability**: Generated results can vary, necessitating our optimization approach.
 
