@@ -1,42 +1,117 @@
-# EchoGen: Iterative Optimization System for LLM
+# EchoGen
 
-## How to use it
+EchoGen is an image-to-physics research prototype. It asks a vision-capable
+language model to describe objects with a small simulation DSL, aggregates
+several independent samples, validates the result, and optionally renders it
+with Pymunk and Pygame.
 
-To use this project, you need to set up your OpenAI API key. Follow these steps:
+This repository is a prototype, not a claim of physically accurate video
+prediction. Model output can be incomplete or wrong and should be reviewed.
 
-1. Obtain an API key from OpenAI if you don't already have one.
-2. In the `main.py` file, locate the following line:
+## Safety Model
 
-   ```python
-   #api_key = "<insert your api_key>"
+Language-model text is untrusted input. EchoGen never uses `exec` or `eval`.
+Instead, `echogen.py`:
 
-## Overview
+1. parses output with Python's AST parser;
+2. accepts only direct calls to `add_ball`, `add_curved_floor`, and
+   `add_polygon`;
+3. accepts only finite numeric literals inside lists and tuples;
+4. validates argument counts, geometry, radius, mass, thickness, and friction;
+5. dispatches validated calls through an explicit handler allowlist.
 
-This project leverages the advanced capabilities of ChatGPT-4 to recognize objects in images and generate physical simulations. By combining image recognition, programming skills, and physics modeling, we aim to create a powerful tool for video prediction and object behavior simulation.
+Imports, attribute access, expressions, keyword expansion, assignments, and
+all other statements are rejected before simulation code runs.
 
-## Key Features
+## Requirements
 
-1. **Image-based Object Recognition**: Utilizes ChatGPT-4o's ability to process and analyze image inputs.
-2. **Physics Modeling**: Translates recognized objects into code-based physics models.
-3. **Simulation Integration**: Connects generated models with a physics engine to simulate future object states.
-4. **Iterative Optimization**: Implements a controller to enhance accuracy and stability through repeated feedback loops.
+- Python 3.9+
+- Runtime packages listed in `requirements.txt`
+- An OpenAI API key only for online image analysis
 
-## Methodology: Optimizing LLM Generation Results through Iterative Feedback
+Create an isolated environment and install the runtime dependencies:
 
-Our approach focuses on improving the accuracy and consistency of ChatGPT-4o's output:
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+```
 
-1. **Predefined Physics Engine Code**: We establish a standardized format for physics simulation code. Therefore, the result of ChatGPT-4o should be like:
-   ```python
-   add_ball(space, (100, 50), 25, 1, (200, 200))
-3. **Multiple Independent Calls**: Each epoch involves three separate calls to ChatGPT-4o.
-4. **Fact-based Prompting**: We provide ChatGPT-4o with facts that have over 50% accuracy.
-5. **Similarity Analysis and Averaging**: Results from each epoch are processed using similarity metrics and averaging techniques. For example:
-6. **Iterative Refinement**: We insert the processed results into the next epoch's prompt as a hint, stating "Hint: the parameters are probably:".
+Tests use only the Python standard library and do not need network access or
+the simulation packages:
 
-## Potential and Challenges
+```bash
+python -m unittest discover -s tests -v
+```
 
-While this approach shows immense potential in video prediction and object behavior simulation, we acknowledge certain challenges:
+## Online Usage
 
-- **Recognition Accuracy**: ChatGPT-4o's object recognition, while advanced, is not always precise.
-- **Output Stability**: Generated results can vary, necessitating our optimization approach.
+Provide credentials through the environment; never add a key to source code:
+
+```bash
+export OPENAI_API_KEY="your-key"
+python echogen.py
+```
+
+The default command uses the bundled example image. To analyze another image,
+pass it explicitly with `--image /path/to/image.jpg`.
+
+Useful options:
+
+```text
+--model MODEL       Model name (default: gpt-4o)
+--epochs N          Iterative refinement rounds (default: 3)
+--samples N         Independent samples per round (default: 3)
+--timeout SECONDS   HTTP timeout per request (default: 30)
+--no-display        Validate and print calls without opening Pygame
+```
+
+Online mode performs network requests and may incur API charges.
+
+## Offline Usage
+
+Use a saved response to exercise parsing and simulation without any network
+call:
+
+```bash
+python echogen.py --response-file examples/sample-simulation-response.txt --no-display
+```
+
+A `.txt` file contains one set of calls. A `.json` file may contain a list of
+independent response strings. EchoGen groups structurally matching samples,
+matches repeated objects one-to-one by geometry and parameters, and robustly
+averages only reliable, unambiguous matches. It rejects consensus when object
+counts, shapes, distances, or assignments do not agree reliably.
+
+Remove `--no-display` to launch the physical simulation after installing the
+runtime dependencies.
+
+## Method
+
+Each online epoch requests several model samples. EchoGen discards invalid
+samples, groups the remaining samples by function and geometry shape, selects
+the largest matching group, and computes a deterministic one-to-one assignment
+for repeated objects before taking robust numeric means. Ambiguous or distant
+assignments fail closed instead of creating averaged objects that no model
+reported. The validated consensus is inserted into the next prompt as a hint.
+This preserves the original iterative image-to-simulation idea without
+executing generated code.
+
+## Project Layout
+
+```text
+echogen.py                                  Safe parser, API client, and CLI
+echogen_assets/sample-input-image.jpg       Bundled default input image
+examples/sample-simulation-response.txt     Offline demonstration input
+tests/test_echogen.py                       Network-free unit tests
+requirements.txt                            Simulation runtime dependencies
+pyproject.toml                              Python and test metadata
+```
+
+## Limitations
+
+- Object recognition and inferred physical parameters are model estimates.
+- Consensus requires structurally matching samples and does not prove truth.
+- The current DSL supports circles, polygons, and curved static floors only.
+- Pymunk rendering uses a simplified 2D model with no learned dynamics.
 

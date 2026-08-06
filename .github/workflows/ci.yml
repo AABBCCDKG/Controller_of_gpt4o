@@ -1,0 +1,147 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.9"
+          - "3.11"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install project and CI tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ".[dev]" build
+          python -m pip check
+
+      - name: Reject dynamic exec and eval calls
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+
+          excluded = {".git", ".venv", "build", "dist"}
+          violations = []
+          paths = sorted(
+              path
+              for path in Path(".").rglob("*.py")
+              if not excluded.intersection(path.parts)
+              and not any(part.endswith(".egg-info") for part in path.parts)
+          )
+
+          for path in paths:
+              tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+              for node in ast.walk(tree):
+                  if not isinstance(node, ast.Call):
+                      continue
+                  function = node.func
+                  if isinstance(function, ast.Name) and function.id in {"exec", "eval"}:
+                      violations.append(f"{path}:{node.lineno}: {function.id}")
+                  elif (
+                      isinstance(function, ast.Attribute)
+                      and function.attr in {"exec", "eval"}
+                  ):
+                      violations.append(f"{path}:{node.lineno}: .{function.attr}")
+
+          if violations:
+              raise SystemExit(
+                  "Dynamic execution calls are forbidden:\n" + "\n".join(violations)
+              )
+          print(f"Checked {len(paths)} Python files: no exec/eval calls found.")
+          PY
+
+      - name: Run at least 20 unittest cases
+        run: |
+          python - <<'PY'
+          import unittest
+
+          suite = unittest.defaultTestLoader.discover("tests")
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          if not result.wasSuccessful():
+              raise SystemExit(1)
+          if result.testsRun < 20:
+              raise SystemExit(
+                  f"Expected at least 20 unittest cases, ran {result.testsRun}."
+              )
+          print(f"Completed {result.testsRun} unittest cases.")
+          PY
+
+      - name: Run offline CLI
+        run: |
+          python echogen.py \
+            --response-file examples/sample-simulation-response.txt \
+            --no-display
+
+      - name: Build wheel
+        run: |
+          python -m build --wheel
+          python - <<'PY'
+          from pathlib import Path
+
+          wheels = list(Path("dist").glob("*.whl"))
+          if len(wheels) != 1:
+              raise SystemExit(f"Expected one wheel, found {len(wheels)}.")
+          print(wheels[0])
+          PY
+
+      - name: Install wheel and smoke-test bundled image
+        env:
+          WHEEL_VENV: ${{ runner.temp }}/echogen-wheel-${{ matrix.python-version }}
+        run: |
+          python -m venv "$WHEEL_VENV"
+          "$WHEEL_VENV/bin/python" -m pip install --upgrade pip
+          "$WHEEL_VENV/bin/python" -m pip install dist/*.whl
+          "$WHEEL_VENV/bin/python" -m pip check
+
+          cd "$RUNNER_TEMP"
+          "$WHEEL_VENV/bin/python" - <<'PY'
+          from pathlib import Path
+
+          import echogen
+
+          module_path = Path(echogen.__file__).resolve()
+          default_image = Path(
+              echogen.build_argument_parser().parse_args([]).image
+          ).resolve()
+          if default_image.parent.parent != module_path.parent:
+              raise SystemExit(
+                  f"Default image is not bundled beside the installed module: "
+                  f"{default_image}"
+              )
+          if not default_image.is_file():
+              raise SystemExit(f"Bundled default image is missing: {default_image}")
+          if len(echogen.encode_image(default_image)) <= 100:
+              raise SystemExit("Bundled default image could not be encoded.")
+          print(f"Bundled image smoke test passed: {default_image}")
+          PY
+
+          "$WHEEL_VENV/bin/python" -m echogen \
+            --response-file "$GITHUB_WORKSPACE/examples/sample-simulation-response.txt" \
+            --no-display

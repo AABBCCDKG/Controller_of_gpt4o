@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "echogen"
+version = "0.1.0"
+description = "Safe image-to-physics simulation research prototype"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.24,<3",
+    "pygame>=2.5,<3",
+    "pymunk>=6.6,<8",
+    "scipy>=1.10,<2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "coverage>=7.2,<8",
+]
+
+[tool.setuptools]
+py-modules = ["echogen"]
+packages = ["echogen_assets"]
+
+[tool.setuptools.package-data]
+echogen_assets = ["sample-input-image.jpg"]
+
+[tool.coverage.run]
+branch = true
+source = ["echogen"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
